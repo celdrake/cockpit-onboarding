@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import cockpit from "cockpit";
 
 import { Stack, StackItem } from "@patternfly/react-core/dist/esm/layouts/Stack/index.js";
@@ -22,7 +22,7 @@ import { Icon } from "@patternfly/react-core/dist/esm/components/Icon";
 import { AliasMode, useModelContext } from "../model-context";
 import { useConfig } from "../app";
 import { getBrandName } from "../flightctl-enrollment";
-import { getSetupInterface } from "../services/network";
+import { isConnectedViaInterface } from "../services/network";
 import { resolveAliasValue } from "../services/alias";
 import { WIZARD_STEP_IDS, type WizardStepId } from "./WizardSteps";
 import { GenericLabel, ServiceEnrollmentConfig } from "../types";
@@ -205,13 +205,19 @@ const ReviewSectionCard = ({
 };
 
 export const ReviewPage: React.FunctionComponent<ReviewPageProps> = ({ hasSelectedEnrollments }) => {
-    const { model, networkManager } = useModelContext();
+    const { model } = useModelContext();
     const { config } = useConfig();
     const brandName = getBrandName(config);
 
-    const interfaces = networkManager?.list_interfaces() || [];
-    const setupIface = getSetupInterface(interfaces);
-    const isSingleNic = setupIface !== null && setupIface === model.networkInterface.selectedInterface;
+    const [isSingleNic, setIsSingleNic] = useState(false);
+
+    useEffect(() => {
+        if (model.networkInterface.selectedInterface) {
+            isConnectedViaInterface(model.networkInterface.selectedInterface).then(setIsSingleNic);
+        } else {
+            setIsSingleNic(false);
+        }
+    }, [model.networkInterface.selectedInterface]);
 
     const aliasSummary =
         model.alias.mode === AliasMode.NONE

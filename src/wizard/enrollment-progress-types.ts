@@ -55,9 +55,7 @@ export interface StepExecutionResult extends ServiceActionsResult {
     deviceUrl?: string;
 }
 
-export interface SystemConfigurationApplyResult extends ServiceActionsResult {
-    singleNic: boolean;
-}
+export type SystemConfigurationApplyResult = ServiceActionsResult;
 
 export type EnrollmentProgressResultItem =
     | { type: "header"; content: string }

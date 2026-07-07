@@ -29,7 +29,7 @@ import { useModelContext } from "../model-context";
 import { useConfig } from "../app";
 import { systemConfigurationService } from "../system-config";
 import { getHostnameInfo } from "../services/hostname";
-import { getSetupInterface, applyNetworkConfiguration, rollbackNetworkConfiguration } from "../services/network";
+import { isConnectedViaInterface, applyNetworkConfiguration, rollbackNetworkConfiguration } from "../services/network";
 import { writeAttemptedMarker } from "../attempted-marker";
 import { SCRIPT_RUN_APPLY_ENROLL, MARKER_COMPLETE } from "../paths";
 import { SubtleHeading } from "../components/Headings.js";
@@ -37,7 +37,6 @@ import { armWatchdog, disarmWatchdog, readWatchdogStatus } from "../services/wat
 import { testNetworkConnectivity, verifyServiceConnectivity, CancellationSignal } from "../services/connectivity";
 import { buildEnrollmentParams, executeEnrollmentScript, finalizeEnrollment } from "../services/enrollment";
 import { createSecureTempFile } from "../services/spawn-helpers";
-import { Interface } from "../../pkg/networkmanager/interfaces.js";
 import { FLIGHTCTL_SCRIPT_PATH, FLIGHTCTL_SERVICE_ID, getBrandName } from "../flightctl-enrollment";
 import {
     ENROLLMENT_ACTION_IDS,
@@ -387,9 +386,6 @@ export const EnrollmentProgressPage: React.FunctionComponent<{ isApplyAuthorized
         try {
             const result = await systemConfigurationService.applySystemConfiguration(networkManager, model);
 
-            if (result.singleNic) {
-                setSingleNic(true);
-            }
             networkAppliedRef.current = true;
             updateModel("networkInterface", { wifiPassword: null });
 
@@ -399,16 +395,6 @@ export const EnrollmentProgressPage: React.FunctionComponent<{ isApplyAuthorized
                 result: result.success ? "success" : "error",
             });
             result.actions.forEach((action) => emit(action));
-
-            if (result.singleNic) {
-                emit({
-                    id: ENROLLMENT_ACTION_IDS.SINGLE_NIC_NOTE,
-                    actionTitle: _(
-                        "Note: Network changes applied on the interface serving this browser session. Connection may be interrupted."
-                    ),
-                    result: "warning",
-                });
-            }
 
             return {
                 success: result.success,
@@ -440,13 +426,11 @@ export const EnrollmentProgressPage: React.FunctionComponent<{ isApplyAuthorized
 
     // Detect whether the user is configuring the same NIC that serves this
     // browser session (single-NIC scenario).
-    const detectSingleNic = (): boolean => {
-        if (!networkManager || !model.networkInterface.selectedInterface) {
+    const detectSingleNic = async (): Promise<boolean> => {
+        if (!model.networkInterface.selectedInterface) {
             return false;
         }
-        const interfaces: Interface[] = networkManager.list_interfaces();
-        const setupIface = getSetupInterface(interfaces);
-        return setupIface !== null && setupIface === model.networkInterface.selectedInterface;
+        return isConnectedViaInterface(model.networkInterface.selectedInterface);
     };
 
     // Single-NIC delegation: apply hostname/NTP in-process, create the NM
@@ -620,7 +604,7 @@ export const EnrollmentProgressPage: React.FunctionComponent<{ isApplyAuthorized
         const resultsBuffer: EnrollmentProgressResultItem[] = [];
 
         // Single-NIC: delegate network activation + enrollment to systemd-run
-        if (detectSingleNic()) {
+        if (await detectSingleNic()) {
             await executeSingleNicDelegation(resultsBuffer);
             return;
         }

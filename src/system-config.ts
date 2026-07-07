@@ -63,7 +63,6 @@ export class SystemConfigurationService {
     ): Promise<SystemConfigurationApplyResult> {
         const actions: StepAction[] = [];
         let hasErrors = false;
-        let singleNic = false;
 
         if (model.hostname.value && model.hostname.value.trim()) {
             try {
@@ -97,7 +96,6 @@ export class SystemConfigurationService {
                     options?.skipActivation
                 );
                 actions.push(...networkApplyResult.actions);
-                singleNic = networkApplyResult.singleNic;
             } catch (error) {
                 actions.push(makeStepAction(CONFIG_ACTION_IDS.NETWORK_UNAVAILABLE, String(error), "error"));
                 hasErrors = true;
@@ -142,7 +140,6 @@ export class SystemConfigurationService {
         return {
             success: !hasErrors,
             actions,
-            singleNic,
         };
     }
 
