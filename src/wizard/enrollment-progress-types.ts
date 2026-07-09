@@ -20,7 +20,6 @@ export const ENROLLMENT_ACTION_IDS = {
     ENROLLMENT_SCRIPT: "enrollment-script",
     ENROLLMENT_COMPLETE: "enrollment-complete",
     FINALIZE_MARKER: "finalize-marker",
-    SINGLE_NIC_NOTE: "single-nic-note",
     BACKGROUND_CONNECTIVITY_CONFIRMED: "background-connectivity-confirmed",
 } as const;
 
